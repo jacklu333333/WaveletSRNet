@@ -25,10 +25,10 @@ parser.add_argument('--test', action='store_true', help='enables test during tra
 parser.add_argument('--mse_avg', action='store_true', help='enables mse avg')
 parser.add_argument('--num_layers_res', type=int, help='number of the layers in residual block', default=2)
 parser.add_argument('--nrow', type=int, help='number of the rows to save images', default=10)
-parser.add_argument('--trainfiles', default="path/celeba/train.list", type=str, help='the list of training files')
-parser.add_argument('--dataroot', default="path/celeba", type=str, help='path to dataset')
-parser.add_argument('--testfiles', default="path/test.list", type=str, help='the list of training files')
-parser.add_argument('--testroot', default="path/celeba", type=str, help='path to dataset')
+parser.add_argument('--trainfiles', default="train.list", type=str, help='the list of training files')
+parser.add_argument('--dataroot', default="H:/dataset/img_align_celeba/img_align_celeba_cropped", type=str, help='path to dataset')
+parser.add_argument('--testfiles', default="test.list", type=str, help='the list of training files')
+parser.add_argument('--testroot', default="H:/dataset/img_align_celeba/img_align_celeba_cropped", type=str, help='path to dataset')
 parser.add_argument('--trainsize', type=int, help='number of training data', default=162770)
 parser.add_argument('--testsize', type=int, help='number of testing data', default=19962)
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=2)
@@ -166,7 +166,7 @@ def main():
                     wavelets = forward_parallel(srnet, input, opt.ngpu)                    
                     prediction = wavelet_rec(wavelets)
                     mse = criterion_m(prediction, target)
-                    psnr = 10 * log10(1 / (mse.data[0]) )
+                    psnr = 10 * log10(1 / (mse.item()) )
                     avg_psnr += psnr
                                                     
                     save_images(prediction, "Epoch_{:03d}_Iter_{:06d}_{:02d}_o.jpg".format(epoch, iteration, titer), 
@@ -204,8 +204,8 @@ def main():
             optimizer_sr.step()
             
             info = "===> Epoch[{}]({}/{}): time: {:4.4f}:".format(epoch, iteration, len(train_data_loader), time.time()-start_time)
-            info += "Rec: {:.4f}, {:.4f}, {:.4f}, Texture: {:.4f}".format(loss_lr.data[0], loss_sr.data[0], 
-                                loss_img.data[0], loss_textures.data[0])            
+            info += "Rec: {:.4f}, {:.4f}, {:.4f}, Texture: {:.4f}".format(loss_lr.item(), loss_sr.item(), 
+                                loss_img.item(), loss_textures.item())            
                           
             print(info)
              
