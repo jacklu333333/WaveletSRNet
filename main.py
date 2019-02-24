@@ -25,19 +25,19 @@ parser.add_argument('--test', action='store_true', help='enables test during tra
 parser.add_argument('--mse_avg', action='store_true', help='enables mse avg')
 parser.add_argument('--num_layers_res', type=int, help='number of the layers in residual block', default=2)
 parser.add_argument('--nrow', type=int, help='number of the rows to save images', default=10)
-parser.add_argument('--trainfiles', default="train.list", type=str, help='the list of training files')
-parser.add_argument('--dataroot', default="H:/dataset/img_align_celeba/img_align_celeba_cropped", type=str, help='path to dataset')
-parser.add_argument('--testfiles', default="test.list", type=str, help='the list of training files')
-parser.add_argument('--testroot', default="H:/dataset/img_align_celeba/img_align_celeba_cropped", type=str, help='path to dataset')
-parser.add_argument('--trainsize', type=int, help='number of training data', default=162770)
-parser.add_argument('--testsize', type=int, help='number of testing data', default=19962)
+parser.add_argument('--trainfiles', default="H:/WaveletSRNet/train.list", type=str, help='the list of training files')
+parser.add_argument('--dataroot', default="H:/dataset/celeba/img_align_celeba", type=str, help='path to dataset')
+parser.add_argument('--testfiles', default="H:/WaveletSRNet/test.list", type=str, help='the list of training files')
+parser.add_argument('--testroot', default="H:/dataset/celeba/img_align_celeba", type=str, help='path to dataset')
+parser.add_argument('--trainsize', type=int, help='number of training data', default=4000)    # 162770
+parser.add_argument('--testsize', type=int, help='number of testing data', default=500)            # 19962
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=2)
 parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
 parser.add_argument('--test_batchSize', type=int, default=64, help='test batch size')
 parser.add_argument('--save_iter', type=int, default=10, help='the interval iterations for saving models')
 parser.add_argument('--test_iter', type=int, default=500, help='the interval iterations for testing')
 parser.add_argument('--cdim', type=int, default=3, help='the channel-size  of the input image to network')
-parser.add_argument('--input_height', type=int, default=128, help='the height  of the input image to network')
+parser.add_argument('--input_height', type=int, default=134, help='the height  of the input image to network')
 parser.add_argument('--input_width', type=int, default=None, help='the width  of the input image to network')
 parser.add_argument('--output_height', type=int, default=128, help='the height  of the output image to network')
 parser.add_argument('--output_width', type=int, default=None, help='the width  of the output image to network')
@@ -57,6 +57,8 @@ parser.add_argument('--manualSeed', type=int, help='manual seed')
 parser.add_argument("--pretrained", default="", type=str, help="path to pretrained model (default: none)")
 
 def main():
+
+    f_psrn = open("model/psnr.txt", "w+")
     
     global opt, model
     opt = parser.parse_args()
@@ -166,7 +168,7 @@ def main():
                     wavelets = forward_parallel(srnet, input, opt.ngpu)                    
                     prediction = wavelet_rec(wavelets)
                     mse = criterion_m(prediction, target)
-                    psnr = 10 * log10(1 / (mse.item()) )
+                    psnr = 10 * log10(1 / (mse.data[0]) )
                     avg_psnr += psnr
                                                     
                     save_images(prediction, "Epoch_{:03d}_Iter_{:06d}_{:02d}_o.jpg".format(epoch, iteration, titer), 
@@ -174,6 +176,7 @@ def main():
                     
                     
                 print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr / len(test_data_loader)))
+                f_psrn.write("{:.4f}\n".format(avg_psnr / len(test_data_loader)))
                 srnet.train()
               
             #--------------train------------
@@ -204,11 +207,14 @@ def main():
             optimizer_sr.step()
             
             info = "===> Epoch[{}]({}/{}): time: {:4.4f}:".format(epoch, iteration, len(train_data_loader), time.time()-start_time)
+            #info += "Rec: {:.4f}, {:.4f}, {:.4f}, Texture: {:.4f}".format(loss_lr.data[0], loss_sr.data[0], 
+            #                    loss_img.data[0], loss_textures.data[0])   
             info += "Rec: {:.4f}, {:.4f}, {:.4f}, Texture: {:.4f}".format(loss_lr.item(), loss_sr.item(), 
                                 loss_img.item(), loss_textures.item())            
                           
             print(info)
-             
+            
+    f_psrn.close()         
 
 def forward_parallel(net, input, ngpu):
     if ngpu > 1:
