@@ -144,39 +144,59 @@ class NetSR(nn.Module):
         #----------wavelet conv-------------------
         inc = 1024       
         layer_num = 1
+        
         if self.scale >= 0:
-          g = 1
-          self.interim_0 = _Interim_Block(inc, wavelet_c * g, g)
-          self.wavelet_0 = make_layer(_Residual_Block, layer_num, wavelet_c * g, wavelet_c * 2 * g, g)
-          self.predict_0 = nn.Conv2d(in_channels=wavelet_c * 2 * g, out_channels=3 * g, kernel_size=3, stride=1, padding=1, 
+            g = 1
+            if self.scale == 0:
+                self.interim_0 = _Interim_Block(inc, wavelet_c * g, g)
+            else:
+                self.interim_0 = _Interim_Block(9, wavelet_c * g, g)
+            
+            #self.interim_0 = _Interim_Block(inc, wavelet_c * g, g)
+            self.wavelet_0 = make_layer(_Residual_Block, layer_num, wavelet_c * g, wavelet_c * 2 * g, g)
+            self.predict_0 = nn.Conv2d(in_channels=wavelet_c * 2 * g, out_channels=3 * g, kernel_size=3, stride=1, padding=1, 
                                   groups=g, bias=True)
         
         if self.scale >= 1:
-          g = 3
-          self.interim_1 = _Interim_Block(inc, wavelet_c * g, g)
-          self.wavelet_1 = make_layer(_Residual_Block, layer_num, wavelet_c * g, wavelet_c * 2 * g, g)
-          self.predict_1 = nn.Conv2d(in_channels=wavelet_c * 2 * g, out_channels=3 * g, kernel_size=3, stride=1, padding=1, 
+            g = 3
+            if self.scale == 1:
+                self.interim_1 = _Interim_Block(inc, wavelet_c * g, g)
+            else:
+                self.interim_1 = _Interim_Block(36, wavelet_c * g, g)
+
+            #self.interim_1 = _Interim_Block(inc, wavelet_c * g, g)
+            self.wavelet_1 = make_layer(_Residual_Block, layer_num, wavelet_c * g, wavelet_c * 2 * g, g)
+            self.predict_1 = nn.Conv2d(in_channels=wavelet_c * 2 * g, out_channels=3 * g, kernel_size=3, stride=1, padding=1, 
                                   groups=g, bias=True)
           
         if self.scale >= 2:
-          g = 12
-          self.interim_2 = _Interim_Block(inc, wavelet_c * g, g)
-          self.wavelet_2 = make_layer(_Residual_Block, layer_num, wavelet_c * g, wavelet_c * 2 * g, g)
-          self.predict_2 = nn.Conv2d(in_channels=wavelet_c * 2 * g, out_channels=3 * g, kernel_size=3, stride=1, padding=1, 
+            g = 12
+            if self.scale == 2:
+                self.interim_2 = _Interim_Block(inc, wavelet_c * g, g)
+            else:
+                self.interim_2 = _Interim_Block(144, wavelet_c * g, g)
+
+            #self.interim_2 = _Interim_Block(inc, wavelet_c * g, g)
+            self.wavelet_2 = make_layer(_Residual_Block, layer_num, wavelet_c * g, wavelet_c * 2 * g, g)
+            self.predict_2 = nn.Conv2d(in_channels=wavelet_c * 2 * g, out_channels=3 * g, kernel_size=3, stride=1, padding=1, 
                                   groups=g, bias=True)
         
         if self.scale >= 3:
-          g = 48
-          self.interim_3 = _Interim_Block(inc, wavelet_c * g, g)
-          self.wavelet_3 = make_layer(_Residual_Block, layer_num, wavelet_c * g, wavelet_c * 2 * g, g)
-          self.predict_3 = nn.Conv2d(in_channels=wavelet_c * 2 * g, out_channels=3 * g, kernel_size=3, stride=1, padding=1, 
+            g = 48
+            if self.scale == 3:
+                self.interim_3 = _Interim_Block(inc, wavelet_c * g, g)
+            else:
+                self.interim_3 = _Interim_Block(576, wavelet_c * g, g)
+
+            self.wavelet_3 = make_layer(_Residual_Block, layer_num, wavelet_c * g, wavelet_c * 2 * g, g)
+            self.predict_3 = nn.Conv2d(in_channels=wavelet_c * 2 * g, out_channels=3 * g, kernel_size=3, stride=1, padding=1, 
                                   groups=g, bias=True)
         
         if self.scale >= 4:
-          g = 192
-          self.interim_4 = _Interim_Block(inc, wavelet_c * g, g)
-          self.wavelet_4 = make_layer(_Residual_Block, layer_num, wavelet_c * g, wavelet_c * 2 * g, g)
-          self.predict_4 = nn.Conv2d(in_channels=wavelet_c * 2 * g, out_channels=3 * g, kernel_size=3, stride=1, padding=1, 
+            g = 192
+            self.interim_4 = _Interim_Block(inc, wavelet_c * g, g)
+            self.wavelet_4 = make_layer(_Residual_Block, layer_num, wavelet_c * g, wavelet_c * 2 * g, g)
+            self.predict_4 = nn.Conv2d(in_channels=wavelet_c * 2 * g, out_channels=3 * g, kernel_size=3, stride=1, padding=1, 
                                   groups=g, bias=True)
           
         for m in self.modules():
@@ -196,54 +216,85 @@ class NetSR(nn.Module):
         
         f = self.residual(f)
 		
-        print('f.size()=', end='')
-        print(f.size(), end=' ')
-        
-        if self.scale >= 0:
-            out_0 = self.interim_0(f)
-            out_0 = self.wavelet_0(out_0)
-            out_0 = self.predict_0(out_0)
-            out = out_0
-		  
-            print('out_0.size()=', end='')
-            print(out_0.size(), end=' ')
-        
-        if self.scale >= 1:
-            out_1 = self.interim_1(f)
-            out_1 = self.wavelet_1(out_1)
-            out_1 = self.predict_1(out_1)
-            out = torch.cat((out, out_1), 1)
+        #print('f.size()=', end='')
+        #print(f.size(), end=' ')
 
-            print('out_1.size()=', end='')
-            print(out_1.size(), end=' ')
-        
-        
-        if self.scale >= 2:
-            out_2 = self.interim_2(f)
-            out_2 = self.wavelet_2(out_2)
-            out_2 = self.predict_2(out_2)
-            out = torch.cat((out, out_2), 1)
-
-            print('out_2.size()=', end='')
-            print(out_2.size(), end=' ')
-          
-        if self.scale >= 3:
-            out_3 = self.interim_3(f)
-            out_3 = self.wavelet_3(out_3)
-            out_3 = self.predict_3(out_3)
-            out = torch.cat((out, out_3), 1)
-
-            print('out_3.size()=', end='')
-            print(out_3.size(), end=' ')
-        
         if self.scale >= 4:
             out_4 = self.interim_4(f)
             out_4 = self.wavelet_4(out_4)
             out_4 = self.predict_4(out_4)
-            out = torch.cat((out, out_4), 1)
+            out = out_4
 
-            print('out_4.size()=', end='')
-            print(out_4.size())
+            #print('out_4.size()=', end='')
+            #print(out_4.size())
+            
+        if self.scale >= 3:
+            if self.scale == 3:
+                out_3 = self.interim_3(f)
+            else:
+                out_3 = self.interim_3(out_4)
+            
+            out_3 = self.wavelet_3(out_3)
+            out_3 = self.predict_3(out_3)
+
+            if self.scale == 3:
+                out = out_3
+            else:
+                out = torch.cat((out_3, out), 1)
+ 
+            #print('out_3.size()=', end='')
+            #print(out_3.size(), end=' ')
+
+        if self.scale >= 2:
+            if self.scale == 2:
+                out_2 = self.interim_2(f)
+            else:
+                out_2 = self.interim_2(out_3)
+
+            out_2 = self.wavelet_2(out_2)
+            out_2 = self.predict_2(out_2)
+            
+            if self.scale == 2:
+                out = out_2
+            else:
+                out = torch.cat((out_2, out), 1)
+
+            #print('out_2.size()=', end='')
+            #print(out_2.size(), end=' ')
+
+        if self.scale >= 1:
+            if self.scale == 1:
+                out_1 = self.interim_1(f)
+            else:
+                out_1 = self.interim_1(out_2)
+
+            out_1 = self.wavelet_1(out_1)
+            out_1 = self.predict_1(out_1)
+            
+            if self.scale == 1:
+                out = out_1
+            else:
+                out = torch.cat((out_1, out), 1)
+
+            #print('out_1.size()=', end='')
+            #print(out_1.size(), end=' ')
+        
+        if self.scale >= 0:
+            if self.scale == 0:
+                out_0 = self.interim_0(f)
+            else:
+                out_0 = self.interim_0(out_1)
+
+            out_0 = self.wavelet_0(out_0)
+            out_0 = self.predict_0(out_0)
+            
+            if self.scale == 0:
+                out = out_0
+            else:
+                out = torch.cat((out_0, out), 1)
+		  
+            #print('out_0.size()=', end='')
+            #print(out_0.size(), end=' ')
 
         return out
          
