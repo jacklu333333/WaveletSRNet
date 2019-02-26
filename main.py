@@ -25,12 +25,12 @@ parser.add_argument('--test', action='store_true', help='enables test during tra
 parser.add_argument('--mse_avg', action='store_true', help='enables mse avg')
 parser.add_argument('--num_layers_res', type=int, help='number of the layers in residual block', default=2)
 parser.add_argument('--nrow', type=int, help='number of the rows to save images', default=10)
-parser.add_argument('--trainfiles', default="path/celeba/train.list", type=str, help='the list of training files')
-parser.add_argument('--dataroot', default="path/celeba", type=str, help='path to dataset')
-parser.add_argument('--testfiles', default="path/test.list", type=str, help='the list of training files')
-parser.add_argument('--testroot', default="path/celeba", type=str, help='path to dataset')
-parser.add_argument('--trainsize', type=int, help='number of training data', default=162770)
-parser.add_argument('--testsize', type=int, help='number of testing data', default=19962)
+parser.add_argument('--trainfiles', default="train.list", type=str, help='the list of training files')
+parser.add_argument('--dataroot', default="/media/dungnh/SuperResolution/dataset/celeba/img_align_celeba", type=str, help='path to dataset')
+parser.add_argument('--testfiles', default="test.list", type=str, help='the list of training files')
+parser.add_argument('--testroot', default="/media/dungnh/SuperResolution/dataset/celeba/img_align_celeba", type=str, help='path to dataset')
+parser.add_argument('--trainsize', type=int, help='number of training data', default=4000)
+parser.add_argument('--testsize', type=int, help='number of testing data', default=500)
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=2)
 parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
 parser.add_argument('--test_batchSize', type=int, default=64, help='test batch size')
@@ -57,6 +57,9 @@ parser.add_argument('--manualSeed', type=int, help='manual seed')
 parser.add_argument("--pretrained", default="", type=str, help="path to pretrained model (default: none)")
 
 def main():
+
+    f_psrn = open("model/psnr.txt", "w+")
+    f_loss = open("model/loss.txt", "w+")
     
     global opt, model
     opt = parser.parse_args()
@@ -163,10 +166,10 @@ def main():
                         input = input.cuda()
                         target = target.cuda()    
 
-                    wavelets = forward_parallel(srnet, input, opt.ngpu)                    
+                    wavelets = forward_parallel(srnet, input, opt.ngpu)
                     prediction = wavelet_rec(wavelets)
                     mse = criterion_m(prediction, target)
-                    psnr = 10 * log10(1 / (mse.data[0]) )
+                    psnr = 10 * log10(1 / (mse.item()) )
                     avg_psnr += psnr
                                                     
                     save_images(prediction, "Epoch_{:03d}_Iter_{:06d}_{:02d}_o.jpg".format(epoch, iteration, titer), 
@@ -174,6 +177,7 @@ def main():
                     
                     
                 print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr / len(test_data_loader)))
+                f_psrn.write("{:.4f}\n".format(avg_psnr / len(test_data_loader)))
                 srnet.train()
               
             #--------------train------------
@@ -187,10 +191,9 @@ def main():
             batch_size = target.size(0)
             wavelets_lr = target_wavelets[:,0:3,:,:]
             wavelets_sr = target_wavelets[:,3:,:,:]
-            
-            wavelets_predict = forward_parallel(srnet, input, opt.ngpu)            
+
+            wavelets_predict = forward_parallel(srnet, input, opt.ngpu)        
             img_predict = wavelet_rec(wavelets_predict)
-            
             
             loss_lr = loss_MSE(wavelets_predict[:,0:3,:,:], wavelets_lr, opt.mse_avg)
             loss_sr = loss_MSE(wavelets_predict[:,3:,:,:], wavelets_sr, opt.mse_avg)
@@ -199,15 +202,19 @@ def main():
             
             loss = loss_sr.mul(0.99) + loss_lr.mul(0.01) + loss_img.mul(0.1) + loss_textures.mul(1)           
             
-            optimizer_sr.zero_grad()    
+            optimizer_sr.zero_grad()
             loss.backward()                       
             optimizer_sr.step()
             
             info = "===> Epoch[{}]({}/{}): time: {:4.4f}:".format(epoch, iteration, len(train_data_loader), time.time()-start_time)
-            info += "Rec: {:.4f}, {:.4f}, {:.4f}, Texture: {:.4f}".format(loss_lr.data[0], loss_sr.data[0], 
-                                loss_img.data[0], loss_textures.data[0])            
-                          
+            info += "Rec: {:.4f}, {:.4f}, {:.4f}, Texture: {:.4f}".format(loss_lr.item(), loss_sr.item(), 
+                                loss_img.item(), loss_textures.item())            
+
+            f_loss.write("{:.4f}\n".format(loss.item()))              
             print(info)
+
+    f_psrn.close()
+    f_loss.close()
              
 
 def forward_parallel(net, input, ngpu):

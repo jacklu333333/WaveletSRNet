@@ -85,9 +85,24 @@ class _Residual_Block(nn.Module):
         else:
           identity_data = x
 
-        output = self.relu1(self.bn1(self.conv1(x)))
-        output = self.conv2(output)
-        output = self.relu2(self.bn2(torch.add(output,identity_data)))
+        with torch.no_grad():
+          output = self.conv1(x)
+
+        output = self.bn1(output)
+
+        with torch.no_grad():
+          output = self.relu1(output)
+
+        with torch.no_grad():
+          output = self.conv2(output)
+
+        with torch.no_grad():
+          output = torch.add(output,identity_data)
+
+        output = self.bn2(output)
+
+        with torch.no_grad():
+          output = self.relu2(output)
         return output 
 
 def make_layer(block, num_of_layer, inc=64, outc=64, groups=1):
@@ -110,10 +125,25 @@ class _Interim_Block(nn.Module):
         self.relu2 = nn.ReLU(inplace=True)
      
     def forward(self, x): 
-        identity_data = self.conv_expand(x)          
-        output = self.relu1(self.bn1(self.conv1(x)))
-        output = self.conv2(output)
-        output = self.relu2(self.bn2(torch.add(output,identity_data)))
+        identity_data = self.conv_expand(x)
+        with torch.no_grad():
+          output = self.conv1(x)  
+
+        output = self.bn1(output)
+        with torch.no_grad():
+          output = self.relu1(output)
+
+        with torch.no_grad():
+          output = self.conv2(output)
+
+        with torch.no_grad():
+          output = torch.add(output,identity_data)
+
+        output = self.bn2(output)
+
+        with torch.no_grad():
+          output = self.relu2(output)
+
         return output    
         
 class NetSR(nn.Module):
@@ -186,7 +216,7 @@ class NetSR(nn.Module):
                 m.weight.data.fill_(1)
                 if m.bias is not None:
                     m.bias.data.zero_()
-        
+
     def forward(self, x):
         
         f = self.relu_input(self.bn_input(self.conv_input(x)))
