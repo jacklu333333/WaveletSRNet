@@ -19,6 +19,7 @@ from networks import *
 from math import log10
 import torchvision
 import cv2
+from PIL import Image, ImageOps
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--test', action='store_true', help='enables test during training')
@@ -26,11 +27,11 @@ parser.add_argument('--mse_avg', action='store_true', help='enables mse avg')
 parser.add_argument('--num_layers_res', type=int, help='number of the layers in residual block', default=2)
 parser.add_argument('--nrow', type=int, help='number of the rows to save images', default=10)
 parser.add_argument('--trainfiles', default="train.list", type=str, help='the list of training files')
-parser.add_argument('--dataroot', default="H:/dataset/img_align_celeba/img_align_celeba_cropped", type=str, help='path to dataset')
+parser.add_argument('--dataroot', default="img_align_celeba", type=str, help='path to dataset')
 parser.add_argument('--testfiles', default="test.list", type=str, help='the list of training files')
-parser.add_argument('--testroot', default="H:/dataset/img_align_celeba/img_align_celeba_cropped", type=str, help='path to dataset')
-parser.add_argument('--trainsize', type=int, help='number of training data', default=162770)
-parser.add_argument('--testsize', type=int, help='number of testing data', default=19962)
+parser.add_argument('--testroot', default="img_align_celeba", type=str, help='path to dataset')
+parser.add_argument('--trainsize', type=int, help='number of training data', default=4000)
+parser.add_argument('--testsize', type=int, help='number of testing data', default=500)
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=2)
 parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
 parser.add_argument('--test_batchSize', type=int, default=64, help='test batch size')
@@ -56,7 +57,15 @@ parser.add_argument('--outf', default='results/', help='folder to output images'
 parser.add_argument('--manualSeed', type=int, help='manual seed')
 parser.add_argument("--pretrained", default="", type=str, help="path to pretrained model (default: none)")
 
+# NetStruct_WavetletDepth_batch-testBatch_Change#1_Change#2...
+TAG = "default_3_16-16" 
+
 def main():
+
+    if not os.path.exists("model/{0}".format(TAG)):
+        os.makedirs("model/{0}".format(TAG))
+
+    f_psrn = open("model/{0}/psnr_{0}.txt".format(TAG,TAG), "a")
     
     global opt, model
     opt = parser.parse_args()
@@ -140,6 +149,7 @@ def main():
                   crop_height=None, crop_width=None,
                   is_random_crop=False, is_mirror=False, is_gray=False, 
                   upscale=mag, is_scale_back=is_scale_back)    
+
     test_data_loader = torch.utils.data.DataLoader(test_set, batch_size=opt.test_batchSize,
                                          shuffle=False, num_workers=int(opt.workers))
                                          
@@ -154,7 +164,8 @@ def main():
         
         for iteration, batch in enumerate(train_data_loader, 0):
             #--------------test-------------
-            if iteration % opt.test_iter is 0 and opt.test:
+            #if iteration % opt.test_iter is 0 and opt.test:
+            if iteration == len(train_data_loader) - 1 and opt.test:
                 srnet.eval()
                 avg_psnr = 0
                 for titer, batch in enumerate(test_data_loader,0):
@@ -171,9 +182,14 @@ def main():
                                                     
                     save_images(prediction, "Epoch_{:03d}_Iter_{:06d}_{:02d}_o.jpg".format(epoch, iteration, titer), 
                                 path=opt.outf, nrow=opt.nrow)
+
+                    if epoch%50 == 0:
+                        save_images(prediction, "Epoch_{:03d}_Iter_{:06d}_{:02d}_o.jpg".format(epoch, iteration, titer), 
+                                    path="result_step50/{0}/".format(TAG), nrow=opt.nrow)
                     
                     
                 print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr / len(test_data_loader)))
+                f_psrn.write("{:.4f}\n".format(avg_psnr / len(test_data_loader)))
                 srnet.train()
               
             #--------------train------------
@@ -181,9 +197,9 @@ def main():
             if opt.cuda:
               input = input.cuda()
               target = target.cuda()
-              
+            
             target_wavelets = wavelet_dec(target)
-          
+
             batch_size = target.size(0)
             wavelets_lr = target_wavelets[:,0:3,:,:]
             wavelets_sr = target_wavelets[:,3:,:,:]
@@ -206,9 +222,10 @@ def main():
             info = "===> Epoch[{}]({}/{}): time: {:4.4f}:".format(epoch, iteration, len(train_data_loader), time.time()-start_time)
             info += "Rec: {:.4f}, {:.4f}, {:.4f}, Texture: {:.4f}".format(loss_lr.item(), loss_sr.item(), 
                                 loss_img.item(), loss_textures.item())            
-                          
+            
             print(info)
-             
+
+    f_psrn.close()
 
 def forward_parallel(net, input, ngpu):
     if ngpu > 1:
@@ -217,16 +234,20 @@ def forward_parallel(net, input, ngpu):
         return net(input)
             
 def save_checkpoint(model, epoch, iteration, prefix=""):
-    model_out_path = "model/" + prefix +"model_epoch_{}_iter_{}.pth".format(epoch, iteration)
+    model_out_path = "model/{0}/".format(TAG) + prefix +"model_epoch_{}_iter_{}.pth".format(epoch, iteration)
     state = {"epoch": epoch ,"model": model}
-    if not os.path.exists("model/"):
-        os.makedirs("model/")
+    if not os.path.exists("model/{0}/".format(TAG)):
+        os.makedirs("model/{0}/".format(TAG))
 
     torch.save(state, model_out_path)
         
     print("Checkpoint saved to {}".format(model_out_path))
 
 def save_images(images, name, path, nrow=10):   
+  
+  # Create target Directory if don't exist
+  if not os.path.exists(path):
+    os.makedirs(path)
   #print(images.size())
   img = images.cpu()
   im = img.data.numpy().astype(np.float32)
