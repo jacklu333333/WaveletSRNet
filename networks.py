@@ -76,10 +76,10 @@ class _Residual_Block(nn.Module):
           self.conv_expand = None
           
         self.conv1 = nn.Conv2d(in_channels=inc, out_channels=outc, kernel_size=3, stride=1, padding=1, groups=groups, bias=False)
-        self.bn1 = nn.BatchNorm2d(outc)
+        #self.bn1 = nn.BatchNorm2d(outc)
         self.relu1 = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv2d(in_channels=outc, out_channels=outc, kernel_size=3, stride=1, padding=1, groups=groups, bias=False)
-        self.bn2 = nn.BatchNorm2d(outc)
+        #self.bn2 = nn.BatchNorm2d(outc)
         self.relu2 = nn.ReLU(inplace=True)
         
     def forward(self, x): 
@@ -88,9 +88,9 @@ class _Residual_Block(nn.Module):
         else:
           identity_data = x
 
-        output = self.relu1(self.bn1(self.conv1(x)))
+        output = self.relu1(self.conv1(x))
         output = self.conv2(output)
-        output = self.relu2(self.bn2(torch.add(output,identity_data)))
+        output = self.relu2(torch.add(output,identity_data))
         return output 
 
 def make_layer(block, num_of_layer, inc=64, outc=64, groups=1):

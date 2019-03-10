@@ -58,7 +58,7 @@ parser.add_argument('--manualSeed', type=int, help='manual seed')
 parser.add_argument("--pretrained", default="", type=str, help="path to pretrained model (default: none)")
 
 # NetStruct_WavetletDepth_batch-testBatch_Change#1_Change#2...
-TAG = "default_3_16-16" 
+TAG = "removeBNinResBlocks_3_16-16" 
 
 def main():
 
