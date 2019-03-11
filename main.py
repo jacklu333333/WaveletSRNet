@@ -58,7 +58,7 @@ parser.add_argument('--manualSeed', type=int, help='manual seed')
 parser.add_argument("--pretrained", default="", type=str, help="path to pretrained model (default: none)")
 
 # NetStruct_WavetletDepth_batch-testBatch_Change#1_Change#2...
-TAG = "removeBNinResBlocks_3_16-16" 
+TAG = "removeBNinResBlocks_3_16-16_testAtLastEpoch" 
 
 def main():
 
@@ -163,34 +163,7 @@ def main():
             save_checkpoint(srnet, epoch, 0, 'sr_')
         
         for iteration, batch in enumerate(train_data_loader, 0):
-            #--------------test-------------
-            #if iteration % opt.test_iter is 0 and opt.test:
-            if iteration == len(train_data_loader) - 1 and opt.test:
-                srnet.eval()
-                avg_psnr = 0
-                for titer, batch in enumerate(test_data_loader,0):
-                    input, target = Variable(batch[0]), Variable(batch[1])
-                    if opt.cuda:
-                        input = input.cuda()
-                        target = target.cuda()    
-
-                    wavelets = forward_parallel(srnet, input, opt.ngpu)                    
-                    prediction = wavelet_rec(wavelets)
-                    mse = criterion_m(prediction, target)
-                    psnr = 10 * log10(1 / (mse.item()) )
-                    avg_psnr += psnr
-                                                    
-                    save_images(prediction, "Epoch_{:03d}_Iter_{:06d}_{:02d}_o.jpg".format(epoch, iteration, titer), 
-                                path=opt.outf, nrow=opt.nrow)
-
-                    if epoch%50 == 0:
-                        save_images(prediction, "Epoch_{:03d}_Iter_{:06d}_{:02d}_o.jpg".format(epoch, iteration, titer), 
-                                    path="result_step50/{0}/".format(TAG), nrow=opt.nrow)
-                    
-                    
-                print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr / len(test_data_loader)))
-                f_psrn.write("{:.4f}\n".format(avg_psnr / len(test_data_loader)))
-                srnet.train()
+            
               
             #--------------train------------
             input, target = Variable(batch[0]), Variable(batch[1], requires_grad=False)          
@@ -224,6 +197,37 @@ def main():
                                 loss_img.item(), loss_textures.item())            
             
             print(info)
+
+
+
+            #--------------test-------------
+            #if iteration % opt.test_iter is 0 and opt.test:
+            if iteration == len(train_data_loader) - 1 and opt.test:
+                srnet.eval()
+                avg_psnr = 0
+                for titer, batch in enumerate(test_data_loader,0):
+                    input, target = Variable(batch[0]), Variable(batch[1])
+                    if opt.cuda:
+                        input = input.cuda()
+                        target = target.cuda()    
+
+                    wavelets = forward_parallel(srnet, input, opt.ngpu)                    
+                    prediction = wavelet_rec(wavelets)
+                    mse = criterion_m(prediction, target)
+                    psnr = 10 * log10(1 / (mse.item()) )
+                    avg_psnr += psnr
+                                                    
+                    save_images(prediction, "Epoch_{:03d}_Iter_{:06d}_{:02d}_o.jpg".format(epoch, iteration, titer), 
+                                path=opt.outf, nrow=opt.nrow)
+
+                    if epoch%50 == 0:
+                        save_images(prediction, "Epoch_{:03d}_Iter_{:06d}_{:02d}_o.jpg".format(epoch, iteration, titer), 
+                                    path="result_step50/{0}/".format(TAG), nrow=opt.nrow)
+                    
+                    
+                print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr / len(test_data_loader)))
+                f_psrn.write("{:.4f}\n".format(avg_psnr / len(test_data_loader)))
+                srnet.train()
 
     f_psrn.close()
 
