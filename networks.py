@@ -43,7 +43,7 @@ class WaveletTransform(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
                 f = open(params_path,'rb')
-                u = pickle._Unpickler(f)
+                u = pickle.Unpickler(f)
                 u.encoding = 'latin1'
                 dct = u.load()
                 #dct = pickle.load(f)
